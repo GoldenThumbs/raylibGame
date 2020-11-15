@@ -4,9 +4,7 @@ project(game C)
 set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 
 set(CMAKE_C_STANDARD 99)
-set(ENV{raylib_DIR} lib)
 
-find_package(raylib QUIET)
 # --- raylib options ---
 set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 set(BUILD_EXAMPLES "3.3" CACHE STRING "" FORCE)
