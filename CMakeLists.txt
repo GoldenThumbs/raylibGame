@@ -13,3 +13,4 @@ add_subdirectory(${raylib_SOURCE_DIR} ${raylib_BINARY_DIR})
 
 add_executable(${PROJECT_NAME} src/main.c)
 target_link_libraries(${PROJECT_NAME} raylib)
+target_compile_definitions(${PROJECT_NAME} PUBLIC ASSETS_PATH="${CMAKE_CURRENT_SOURCE_DIR}/assets/")
