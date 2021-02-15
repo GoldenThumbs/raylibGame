@@ -1,32 +1,43 @@
 #include "raylib.h"
 #include "raymath.h"
+#include "rlgl.h"
 
-int main(void)
+#include "gbuffer.h"
+
+int main(int argc, char* argv[])
 {
     // Initialization
     //--------------------------------------------------------------------------------------
-    const int screenWidth = 800;
-    const int screenHeight = 450;
+    const int screenWidth = 1600;
+    const int screenHeight = 800;
 
     InitWindow(screenWidth, screenHeight, "raylib [core] example - basic window");
 
     Camera camera;
-    camera.position = (Vector3){0, 0.5f, 0};
-    camera.target = (Vector3){0, 0.5f, 1.0};
-    camera.up = (Vector3){0, 1.0, 0};
+    camera.position = (Vector3) { 0, 0.5, 0 };
+    camera.target = (Vector3) { 0, 0.5, 1.0 };
+    camera.up = (Vector3) { 0, 1.0, 0 };
     camera.type = CAMERA_PERSPECTIVE;
     camera.fovy = 85;
 
-    Image image = LoadImage("assets/cubicmap.png");
-    Mesh mesh = GenMeshCubicmap(image, Vector3One());
+    Image map = LoadImage(ASSETS_PATH"map.png");
+    Mesh mesh = GenMeshCubicmap(map, Vector3One());
     Model model = LoadModelFromMesh(mesh);
+    UnloadImage(map);
+    
+    Shader shader = LoadShader(ASSETS_PATH"shaders/geom.vs", ASSETS_PATH"shaders/geom.fs");
+    shader.locs[LOC_MATRIX_MODEL] = GetShaderLocation(shader, "matModel");
+    //shader.locs[LOC_VECTOR_VIEW] = GetShaderLocation(shader, "viewPos");
+    model.materials[0].shader = shader;
 
-    Texture2D texture = LoadTexture("assets/cubicmap_atlas.png");    // Load map texture
-    GenTextureMipmaps(&texture);
-    SetTextureFilter(texture, FILTER_ANISOTROPIC_8X);
-    model.materials[0].maps[MAP_DIFFUSE].texture = texture;             // Set map diffuse texture
+    Texture2D mapTexture = LoadTexture(ASSETS_PATH"MapAtlas.dds");
+    model.materials[0].maps[MAP_ALBEDO].texture = mapTexture;
 
-    Vector3 modelPos = (Vector3){-16.0f, 0.0f, -8.0f};
+    Vector3 modelPos = (Vector3) { -8.0, 0.0, -4.0 };
+
+    SetCameraMode(camera, CAMERA_FIRST_PERSON);
+
+    gbuffer_t gbuffer = gbuffer_new(screenWidth, screenHeight);
 
     SetTargetFPS(60);
     //--------------------------------------------------------------------------------------
@@ -36,19 +47,25 @@ int main(void)
     {
         // Update
         //----------------------------------------------------------------------------------
+        UpdateCamera(&camera);
 
+        //float cameraPos[3] = { camera.position.x, camera.position.y, camera.position.z };
+        //SetShaderValue(shader, shader.locs[LOC_VECTOR_VIEW], cameraPos, UNIFORM_VEC3);
         //----------------------------------------------------------------------------------
 
         // Draw
         //----------------------------------------------------------------------------------
         BeginDrawing();
 
-            ClearBackground(RAYWHITE);
-            BeginMode3D(camera);
+            ClearBackground(DARKGRAY);
 
-                DrawModel(model, modelPos, 1.0, WHITE);
+            gbuffer_begin(&gbuffer);
+                BeginMode3D(camera);
+                    DrawModel(model, modelPos, 1.0, BROWN);
+                EndMode3D();
+            gbuffer_end();
 
-            EndMode3D();
+            DrawTexturePro(gbuffer.position, (Rectangle){0, 0, gbuffer.width, -gbuffer.height}, (Rectangle){0, 0, gbuffer.width, gbuffer.height}, Vector2Zero(), 0.0f, WHITE);
 
         EndDrawing();
         //----------------------------------------------------------------------------------
@@ -57,8 +74,9 @@ int main(void)
     // De-Initialization
     //--------------------------------------------------------------------------------------
     UnloadModel(model);
-    UnloadTexture(texture);
-
+    UnloadShader(shader);
+    UnloadTexture(mapTexture);
+    
     CloseWindow();        // Close window and OpenGL context
     //--------------------------------------------------------------------------------------
 
