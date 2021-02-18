@@ -37,5 +37,4 @@ void main()
     colorbuffer = vec4(texCol.rgb * fragColor.rgb, 1.0);
     normalbuffer = vec4(n * 0.5 + 0.5, 1.0);
     positionbuffer = vec4(fragPosition, 1.0);
-    //finalColor.a = 1.0;
 }

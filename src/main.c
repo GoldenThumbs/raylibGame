@@ -13,6 +13,8 @@ int main(int argc, char* argv[])
 
     InitWindow(screenWidth, screenHeight, "raylib [core] example - basic window");
 
+    gbuffer_t gBuffer = gbuffer_new(screenWidth, screenHeight);
+
     Camera camera;
     camera.position = (Vector3) { 0, 0.5, 0 };
     camera.target = (Vector3) { 0, 0.5, 1.0 };
@@ -37,8 +39,6 @@ int main(int argc, char* argv[])
 
     SetCameraMode(camera, CAMERA_FIRST_PERSON);
 
-    gbuffer_t gbuffer = gbuffer_new(screenWidth, screenHeight);
-
     SetTargetFPS(60);
     //--------------------------------------------------------------------------------------
 
@@ -57,15 +57,16 @@ int main(int argc, char* argv[])
         //----------------------------------------------------------------------------------
         BeginDrawing();
 
-            ClearBackground(DARKGRAY);
+            //ClearBackground(DARKGRAY);
+            gbuffer_begin(gBuffer);
+                ClearBackground(DARKGRAY);
 
-            gbuffer_begin(&gbuffer);
                 BeginMode3D(camera);
                     DrawModel(model, modelPos, 1.0, BROWN);
                 EndMode3D();
             gbuffer_end();
 
-            DrawTexturePro(gbuffer.position, (Rectangle){0, 0, gbuffer.width, -gbuffer.height}, (Rectangle){0, 0, gbuffer.width, gbuffer.height}, Vector2Zero(), 0.0f, WHITE);
+            DrawTextureRec(gBuffer.normal, (Rectangle){ 0, 0, screenWidth, -screenHeight }, (Vector2){ 0, 0 }, WHITE);
 
         EndDrawing();
         //----------------------------------------------------------------------------------
@@ -76,6 +77,7 @@ int main(int argc, char* argv[])
     UnloadModel(model);
     UnloadShader(shader);
     UnloadTexture(mapTexture);
+    gbuffer_free(gBuffer);
     
     CloseWindow();        // Close window and OpenGL context
     //--------------------------------------------------------------------------------------
