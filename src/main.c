@@ -26,7 +26,7 @@ int main(int argc, char* argv[])
 
     gbuffer_t gBuffer = gbuffer_new(screenWidth, screenHeight);
 
-    Shader deferredLight = LoadShader(0, ASSETS_PATH"shaders/deferred.fs");
+    Shader deferredLight = LoadShader(ASSETS_PATH"shaders/deferred.vs", ASSETS_PATH"shaders/deferred.fs");
     deferredLight.locs[LOC_VECTOR_VIEW] = GetShaderLocation(deferredLight, "viewPos");
     int lightLocs[3];
     lightLocs[0] = GetShaderLocation(deferredLight, "lightPos");
@@ -63,7 +63,9 @@ int main(int argc, char* argv[])
     Texture2D mapTexture = LoadTexture(ASSETS_PATH"MapAtlas.dds");
     model.materials[0].maps[MAP_ALBEDO].texture = mapTexture;
 
-    Vector3 modelPos = (Vector3) { -8.0, 0.0, -4.0 };
+    Vector3 modelPos = (Vector3) { -7.5, 0.0, -3.5 };
+
+    Shader stencilShader = LoadShader(0, ASSETS_PATH"shaders/stencil.fs");
 
     SetCameraMode(camera, CAMERA_FIRST_PERSON);
 
@@ -87,16 +89,40 @@ int main(int argc, char* argv[])
 
             //ClearBackground(DARKGRAY);
             gbuffer_begin(gBuffer);
-                ClearBackground(DARKGRAY);
+                ClearBackground(BLACK);
 
                 BeginMode3D(camera);
                     DrawModel(model, modelPos, 1.0, BROWN);
                 EndMode3D();
             gbuffer_end();
 
+
+            BeginMode3D(camera);
+            ClearBackground(BLACK);
             for (int i = 0; i < MAX_LIGHTS; i++)
             {
-                if (i != 0) BeginBlendMode(BLEND_ADDITIVE);
+                rlEnableDepthTest();
+                rlDisableBackfaceCulling();
+
+                // Frankly I don't understand this stencil test stuff...
+                
+                glEnable(GL_STENCIL_TEST);
+                glStencilMask(0xFF);
+
+                glClear(GL_STENCIL_BUFFER_BIT);
+                glStencilFunc(GL_ALWAYS, 0, 0);
+
+                glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_DECR_WRAP, GL_KEEP);
+                glStencilOpSeparate(GL_BACK, GL_KEEP, GL_INCR_WRAP, GL_KEEP);
+
+                BeginShaderMode(stencilShader);
+                    DrawSphere(Lights[i].position, Lights[i].radius, BLACK);
+                EndBlendMode();
+
+                rlDisableDepthTest();
+                rlEnableBackfaceCulling();
+
+                BeginBlendMode(BLEND_ADDITIVE);
                 BeginShaderMode(deferredLight);
                     SetShaderValueTexture(deferredLight, gbufferLocs[0], gBuffer.color);
                     SetShaderValueTexture(deferredLight, gbufferLocs[1], gBuffer.normal);
@@ -106,10 +132,18 @@ int main(int argc, char* argv[])
                     SetShaderValue(deferredLight, lightLocs[1], (float*)&LightColor, UNIFORM_VEC4);
                     SetShaderValue(deferredLight, lightLocs[2], &Lights[i].radius, UNIFORM_FLOAT);
 
-                    DrawTextureRec(gBuffer.color, (Rectangle){ 0.0, 0.0, (float)screenWidth, -(float)screenHeight }, (Vector2){ 0.0, 0.0 }, BLUE);
+                    glStencilFunc(GL_NOTEQUAL, 0, 0xFF);
+                    glCullFace(GL_FRONT);
+                    DrawSphere(Lights[i].position, Lights[i].radius, Lights[i].color); // Simple point light volume
+                    
+                    glDisable(GL_STENCIL_TEST);
+
                 EndShaderMode();
-                if (i != 0) EndBlendMode();
+                EndBlendMode();
+                glCullFace(GL_BACK);
             }
+            EndMode3D();
+            DrawFPS(10, 10);
         EndDrawing();
         //----------------------------------------------------------------------------------
     }
@@ -121,6 +155,7 @@ int main(int argc, char* argv[])
     UnloadShader(shader);
     UnloadTexture(mapTexture);
     gbuffer_free(gBuffer);
+    UnloadShader(stencilShader);
     
     CloseWindow();        // Close window and OpenGL context
     //--------------------------------------------------------------------------------------

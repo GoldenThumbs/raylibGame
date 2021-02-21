@@ -1,12 +1,14 @@
 #version 330
 
-in vec2 fragTexCoord;
+in vec3 fragTexCoord;
+in vec3 fragPosition;
 in vec4 fragColor;
 out vec4 finalColor;
 
 uniform sampler2D colorbuffer;
 uniform sampler2D normalbuffer;
 uniform sampler2D positionbuffer;
+//uniform sampler2D depthbuffer;
 
 uniform vec3 viewPos;
 uniform vec3 lightPos;
@@ -15,9 +17,14 @@ uniform float lightRadius;
 
 void main()
 {
-    vec3 color = texture(colorbuffer, fragTexCoord).rgb;
-    vec3 normal = texture(normalbuffer, fragTexCoord).rgb * 2.0 - 1.0;
-    vec3 position = texture(positionbuffer, fragTexCoord).rgb;
+    vec2 uv = (fragTexCoord.xy / fragTexCoord.z) * 0.5 + 0.5;
+    
+    vec3 color = texture(colorbuffer, uv).rgb;
+    vec3 normal = texture(normalbuffer, uv).rgb * 2.0 - 1.0;
+    vec3 position = texture(positionbuffer, uv).rgb;
+
+    if (normal == vec3(0.0, 0.0, 0.0))
+    { discard; }
 
     vec3 viewDir = normalize(viewPos - position);
 
